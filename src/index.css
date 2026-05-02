@@ -1,0 +1,11 @@
+@import "tailwindcss";
+
+@theme {
+  --color-editorial-bg: #F4F4F5;
+  --color-editorial-ink: #18181B;
+  --color-brand-orange: #F97316;
+}
+
+body {
+  @apply bg-editorial-bg text-editorial-ink font-sans;
+}
