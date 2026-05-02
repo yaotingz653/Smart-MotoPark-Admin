@@ -4,7 +4,7 @@ import { Plus, Minus, Save, RefreshCcw, AlertTriangle, MousePointerClick } from 
 
 interface SpotData {
   id: string;
-  status: 'available' | 'occupied';
+  status: 'available' | 'occupied' | 'disabled' | 'mine';
   number: string;
 }
 
@@ -21,6 +21,9 @@ export default function GridConfig() {
 
   useEffect(() => {
     fetchCurrentGrid();
+    // 每 5 秒自動重新整理，讓圖示即時反映學生端的停車狀態
+    const interval = setInterval(fetchCurrentGrid, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   const fetchCurrentGrid = async () => {
@@ -50,14 +53,24 @@ export default function GridConfig() {
   const handleToggleSpot = useCallback(async (spotId: string, currentStatus: string) => {
     if (togglingId) return;
     setTogglingId(spotId);
-    const newStatus = currentStatus === 'available' ? 'occupied' : 'available';
+    // 三狀態循環：available → occupied → disabled → available
+    const nextStatus =
+      currentStatus === 'available' ? 'occupied' :
+      currentStatus === 'occupied' ? 'disabled' : 'available';
+
     const { error } = await supabase
       .from('parking_spots')
-      .update({ status: newStatus, occupied_by: newStatus === 'available' ? null : 'admin_manual', occupied_at: newStatus === 'available' ? null : new Date().toISOString() })
+      .update({
+        status: nextStatus,
+        occupied_by: null,
+        occupied_at: nextStatus === 'occupied' ? new Date().toISOString() : null,
+      })
       .eq('id', spotId);
 
     if (!error) {
-      setSpots(prev => prev.map(s => s.id === spotId ? { ...s, status: newStatus as any } : s));
+      setSpots(prev => prev.map(s => s.id === spotId ? { ...s, status: nextStatus as any } : s));
+    } else {
+      console.error('切換失敗：', error.message);
     }
     setTogglingId(null);
   }, [togglingId]);
@@ -220,14 +233,22 @@ export default function GridConfig() {
         <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">圖例：</span>
         <div className="flex items-center gap-1.5">
           <div className="w-5 h-5 rounded bg-[#10B981]"></div>
-          <span className="text-xs font-bold text-slate-500">空位（可點擊切換）</span>
+          <span className="text-xs font-bold text-slate-500">空位（點擊→佔用）</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-5 h-5 rounded bg-[#3B82F6]"></div>
+          <span className="text-xs font-bold text-slate-500">學生停車中</span>
         </div>
         <div className="flex items-center gap-1.5">
           <div className="w-5 h-5 rounded bg-[#EF4444]"></div>
-          <span className="text-xs font-bold text-slate-500">佔用（可點擊切換）</span>
+          <span className="text-xs font-bold text-slate-500">佔用（點擊→停用）</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <div className="w-5 h-5 rounded border-2 border-dashed border-[#3B82F6] bg-blue-50"></div>
+          <div className="w-5 h-5 rounded bg-slate-400"></div>
+          <span className="text-xs font-bold text-slate-500">停用（點擊→空位）</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-5 h-5 rounded border-2 border-dashed border-slate-300 bg-blue-50"></div>
           <span className="text-xs font-bold text-slate-500">將新增</span>
         </div>
         <div className="flex items-center gap-1.5">
@@ -262,9 +283,17 @@ export default function GridConfig() {
 
               if (cellType === 'keep') {
                 clickable = true;
-                if (spot?.status === 'occupied') {
+                if (spot?.status === 'mine') {
+                  // 學生已停車的車位：顯示藍色，不可被管理員點擊切換
+                  cellClass = 'bg-[#3B82F6] cursor-default';
+                  title = `${spot.number} — 學生已停車`;
+                  clickable = false;
+                } else if (spot?.status === 'occupied') {
                   cellClass = 'bg-[#EF4444] hover:bg-red-600 cursor-pointer';
-                  title = `${spot.number} — 佔用中，點擊釋放`;
+                  title = `${spot.number} — 佔用中，點擊轉為停用`;
+                } else if (spot?.status === 'disabled') {
+                  cellClass = 'bg-slate-400 hover:bg-slate-500 cursor-pointer';
+                  title = `${spot.number} — 停用中，點擊釋放為空位`;
                 } else {
                   cellClass = 'bg-[#10B981] hover:bg-emerald-600 cursor-pointer';
                   title = `${spot?.number ?? spotId} — 空位，點擊設為佔用`;
