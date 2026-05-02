@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { Search, Car } from 'lucide-react';
 
@@ -21,7 +21,7 @@ export default function UserManager() {
   const fetchUsers = async () => {
     setLoading(true);
     // 使用 Service Role Key 直接讀取 auth.users 的完整使用者清單
-    const { data, error } = await supabase.auth.admin.listUsers();
+    const { data } = await supabase.auth.admin.listUsers();
     if (data?.users) {
       const mapped: UserProfile[] = data.users.map(u => ({
         id: u.id,

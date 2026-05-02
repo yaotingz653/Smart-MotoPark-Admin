@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { LayoutDashboard, Car, Users, CheckCircle2, XCircle, UserCheck } from 'lucide-react';
+import { CheckCircle2, XCircle, UserCheck } from 'lucide-react';
 
 export default function Dashboard() {
   const [stats, setStats] = useState({

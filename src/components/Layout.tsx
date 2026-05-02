@@ -1,6 +1,6 @@
-import React from 'react';
+
 import { Outlet, NavLink } from 'react-router-dom';
-import { LayoutDashboard, Car, Users, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, Car, Users, ShieldCheck, Grid3X3 } from 'lucide-react';
 
 export default function Layout() {
   return (
@@ -52,6 +52,18 @@ export default function Layout() {
           >
             <Users size={20} />
             <span>Directory</span>
+          </NavLink>
+
+          <NavLink
+            to="/grid"
+            className={({ isActive }) =>
+              `flex items-center gap-4 px-4 py-3 rounded-2xl font-bold transition-all ${
+                isActive ? 'bg-[#8B5CF6] text-white shadow-md shadow-purple-100' : 'text-slate-400 hover:bg-slate-50 hover:text-[#8B5CF6]'
+              }`
+            }
+          >
+            <Grid3X3 size={20} />
+            <span>Grid Config</span>
           </NavLink>
         </nav>
 
