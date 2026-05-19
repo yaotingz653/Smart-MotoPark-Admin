@@ -8,29 +8,6 @@ import Layout from './components/Layout';
 import type { ParkingArray, GridContext } from './types/grid';
 import './index.css';
 
-/**
- * 根據行列數產生假資料格子列表
- * - 隨機分配少量 occupied / disabled 讓視覺更真實
- */
-function generateSpots(rows: number, cols: number, prefix: string): ParkingArray['spots'] {
-  const spots: ParkingArray['spots'] = [];
-  for (let r = 0; r < rows; r++) {
-    const rowLetter = String.fromCharCode(65 + r);
-    for (let c = 0; c < cols; c++) {
-      const id = `${prefix}-${r}-${c}`;
-      const number = `${rowLetter}-${String(c + 1).padStart(2, '0')}`;
-      // NOTE: 以亂數決定初始狀態，讓假資料更有代入感
-      const rand = Math.random();
-      const status =
-        rand < 0.08 ? 'occupied' :
-        rand < 0.12 ? 'disabled' :
-        rand < 0.15 ? 'mine' : 'available';
-      spots.push({ id, number, status });
-    }
-  }
-  return spots;
-}
-
 /** 預設的第一筆陣列（主停車場）— 標記 isLive=true，GridConfig 會從 Supabase 拉取真實資料 */
 const DEFAULT_ARRAY: ParkingArray = {
   id: 'array-default',

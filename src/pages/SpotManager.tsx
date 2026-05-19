@@ -168,7 +168,7 @@ export default function SpotManager() {
                 mine:     { label: '學生停車', bg: 'bg-blue-100', text: 'text-blue-600' },
                 occupied: { label: '佔用中',   bg: 'bg-red-100',  text: 'text-red-600'  },
                 disabled: { label: '停用',     bg: 'bg-slate-100', text: 'text-slate-500' },
-              }[spot.status] ?? { label: spot.status, bg: 'bg-slate-100', text: 'text-slate-500' };
+              }[spot.status as 'mine' | 'occupied' | 'disabled'] ?? { label: spot.status, bg: 'bg-slate-100', text: 'text-slate-500' };
 
               return (
                 <tr key={spot.id} className={`border-b border-slate-50 transition-colors ${isConfirming ? 'bg-red-50' : 'hover:bg-slate-50/50'}`}>
