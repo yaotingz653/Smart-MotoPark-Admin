@@ -1,41 +1,94 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import { ShieldAlert, Search } from 'lucide-react';
+import { ShieldAlert, Search, Clock, User, Ban, AlertCircle } from 'lucide-react';
+
+/**
+ * 將停車時間轉為人類可讀的時長
+ */
+function formatDuration(occupiedAt: string | null): string {
+  if (!occupiedAt) return '—';
+  const diffMs = Date.now() - new Date(occupiedAt).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  const hours = Math.floor(mins / 60);
+  const days = Math.floor(hours / 24);
+  if (days > 0) return `${days}天 ${hours % 24}小時`;
+  if (hours > 0) return `${hours}小時 ${mins % 60}分`;
+  if (mins > 0) return `${mins} 分鐘`;
+  return '剛剛';
+}
 
 export default function SpotManager() {
   const [spots, setSpots] = useState<any[]>([]);
   const [query, setQuery] = useState('');
+  // UUID → 使用者姓名的對照表
+  const [userMap, setUserMap] = useState<Record<string, string>>({});
+  // 正在等待確認釋放的車位 id
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  // 正在執行釋放的車位 id
+  const [releasingId, setReleasingId] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchSpots();
+    fetchAll();
     const sub = supabase.channel('spots-manager')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'parking_spots' }, fetchSpots)
       .subscribe();
     return () => { supabase.removeChannel(sub); };
   }, []);
 
+  const fetchAll = async () => {
+    await Promise.all([fetchSpots(), fetchUserMap()]);
+  };
+
   const fetchSpots = async () => {
-    const { data } = await supabase.from('parking_spots')
+    const { data } = await supabase
+      .from('parking_spots')
       .select('*')
       .neq('status', 'available')
       .order('id', { ascending: true });
     if (data) setSpots(data);
   };
 
-  const handleForceRelease = async (id: string) => {
-    if (!window.confirm(`Are you sure you want to FORCE RELEASE spot ${id}?`)) return;
+  /**
+   * 取得所有使用者，建立 UUID → 姓名對照表
+   * 讓 Occupied By 欄位顯示可讀姓名而非 UUID
+   */
+  const fetchUserMap = async () => {
+    const { data } = await supabase.auth.admin.listUsers();
+    if (data?.users) {
+      const map: Record<string, string> = {};
+      data.users.forEach(u => {
+        map[u.id] = u.user_metadata?.name || u.email?.split('@')[0] || '未知使用者';
+      });
+      setUserMap(map);
+    }
+  };
+
+  const handleForceRelease = useCallback(async (id: string) => {
+    setReleasingId(id);
     await supabase.from('parking_spots').update({
       status: 'available',
       occupied_by: null,
-      occupied_at: null
+      occupied_at: null,
     }).eq('id', id);
-  };
+    setConfirmingId(null);
+    setReleasingId(null);
+    await fetchSpots();
+  }, []);
 
-  const filtered = spots.filter(s => s.number.toLowerCase().includes(query.toLowerCase()));
+  // 統計數字
+  const totalCount  = spots.length;
+  const occupiedCount  = spots.filter(s => s.status === 'occupied' || s.status === 'mine').length;
+  const disabledCount  = spots.filter(s => s.status === 'disabled').length;
+
+  const filtered = spots.filter(s =>
+    s.number.toLowerCase().includes(query.toLowerCase()) ||
+    (userMap[s.occupied_by] || '').toLowerCase().includes(query.toLowerCase())
+  );
 
   return (
     <div className="max-w-5xl mx-auto">
-      <div className="mb-10 flex justify-between items-end">
+      {/* 頁首 */}
+      <div className="mb-8 flex justify-between items-end">
         <div>
           <span className="text-[10px] font-bold text-brand-orange tracking-widest uppercase mb-2 block">Administrative Action</span>
           <h1 className="text-4xl font-serif font-black text-editorial-ink tracking-tight">Spot Control.</h1>
@@ -46,7 +99,7 @@ export default function SpotManager() {
           </div>
           <input
             type="text"
-            placeholder="Search occupied spots..."
+            placeholder="搜尋車位或使用者..."
             value={query}
             onChange={e => setQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-xs font-bold tracking-wide focus:outline-none focus:ring-2 focus:ring-brand-orange"
@@ -54,46 +107,143 @@ export default function SpotManager() {
         </div>
       </div>
 
+      {/* 快速統計條 */}
+      <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="bg-white rounded-2xl px-5 py-4 border border-slate-100 shadow-sm flex items-center gap-4">
+          <AlertCircle size={20} className="text-amber-400 shrink-0" />
+          <div>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">需處理</p>
+            <p className="text-2xl font-serif font-black text-editorial-ink">{totalCount}</p>
+          </div>
+        </div>
+        <div className="bg-red-50 rounded-2xl px-5 py-4 border border-red-100 flex items-center gap-4">
+          <ShieldAlert size={20} className="text-red-400 shrink-0" />
+          <div>
+            <p className="text-[10px] font-bold text-red-400 uppercase tracking-widest">佔用中</p>
+            <p className="text-2xl font-serif font-black text-red-500">{occupiedCount}</p>
+          </div>
+        </div>
+        <div className="bg-slate-50 rounded-2xl px-5 py-4 border border-slate-100 flex items-center gap-4">
+          <Ban size={20} className="text-slate-400 shrink-0" />
+          <div>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">停用</p>
+            <p className="text-2xl font-serif font-black text-slate-500">{disabledCount}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* 資料表 */}
       <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-100">
-              <th className="py-4 px-6 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Spot ID</th>
-              <th className="py-4 px-6 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Status</th>
-              <th className="py-4 px-6 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Occupied By</th>
-              <th className="py-4 px-6 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">Action</th>
+              <th className="py-4 px-6 text-[10px] font-bold text-slate-400 uppercase tracking-widest">車位</th>
+              <th className="py-4 px-6 text-[10px] font-bold text-slate-400 uppercase tracking-widest">狀態</th>
+              <th className="py-4 px-6 text-[10px] font-bold text-slate-400 uppercase tracking-widest">使用者</th>
+              <th className="py-4 px-6 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                <div className="flex items-center gap-1"><Clock size={11} />停車時長</div>
+              </th>
+              <th className="py-4 px-6 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">操作</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={4} className="py-12 text-center text-slate-400 font-bold text-sm">No occupied spots found.</td>
-              </tr>
-            ) : filtered.map(spot => (
-              <tr key={spot.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
-                <td className="py-4 px-6 font-bold text-editorial-ink">{spot.number}</td>
-                <td className="py-4 px-6">
-                  <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ${
-                    spot.status === 'mine' ? 'bg-blue-100 text-blue-600' : 'bg-red-100 text-red-600'
-                  }`}>
-                    {spot.status}
-                  </span>
-                </td>
-                <td className="py-4 px-6 text-sm text-slate-500">{spot.occupied_by || 'Unknown'}</td>
-                <td className="py-4 px-6 text-right">
-                  <button
-                    onClick={() => handleForceRelease(spot.id)}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-xl text-xs font-bold hover:bg-red-500 hover:text-white transition-all active:scale-95"
-                  >
-                    <ShieldAlert size={14} />
-                    Force Release
-                  </button>
+                <td colSpan={5} className="py-16 text-center">
+                  <div className="flex flex-col items-center gap-2 text-slate-400">
+                    <ShieldAlert size={32} className="opacity-20" />
+                    <p className="font-bold text-sm">目前沒有需要處理的車位</p>
+                    <p className="text-xs">所有車位均為空位狀態</p>
+                  </div>
                 </td>
               </tr>
-            ))}
+            ) : filtered.map(spot => {
+              const isConfirming = confirmingId === spot.id;
+              const isReleasing = releasingId === spot.id;
+              const userName = spot.occupied_by
+                ? (userMap[spot.occupied_by] || spot.occupied_by.slice(0, 8) + '...')
+                : null;
+
+              const statusConfig = {
+                mine:     { label: '學生停車', bg: 'bg-blue-100', text: 'text-blue-600' },
+                occupied: { label: '佔用中',   bg: 'bg-red-100',  text: 'text-red-600'  },
+                disabled: { label: '停用',     bg: 'bg-slate-100', text: 'text-slate-500' },
+              }[spot.status] ?? { label: spot.status, bg: 'bg-slate-100', text: 'text-slate-500' };
+
+              return (
+                <tr key={spot.id} className={`border-b border-slate-50 transition-colors ${isConfirming ? 'bg-red-50' : 'hover:bg-slate-50/50'}`}>
+                  {/* 車位號碼 */}
+                  <td className="py-4 px-6 font-bold text-editorial-ink font-mono">{spot.number}</td>
+
+                  {/* 狀態標籤 */}
+                  <td className="py-4 px-6">
+                    <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ${statusConfig.bg} ${statusConfig.text}`}>
+                      {statusConfig.label}
+                    </span>
+                  </td>
+
+                  {/* 使用者（UUID → 姓名） */}
+                  <td className="py-4 px-6">
+                    {userName ? (
+                      <div className="flex items-center gap-2">
+                        <User size={13} className="text-slate-400 shrink-0" />
+                        <span className="text-sm font-bold text-slate-700">{userName}</span>
+                      </div>
+                    ) : (
+                      <span className="text-sm text-slate-300">—</span>
+                    )}
+                  </td>
+
+                  {/* 停車時長 */}
+                  <td className="py-4 px-6">
+                    <div className="flex items-center gap-1.5 text-sm text-slate-500">
+                      <Clock size={12} className="shrink-0" />
+                      {formatDuration(spot.occupied_at)}
+                    </div>
+                  </td>
+
+                  {/* 操作欄：未確認時顯示按鈕，確認中顯示 Yes/Cancel */}
+                  <td className="py-4 px-6 text-right">
+                    {isConfirming ? (
+                      <div className="flex items-center justify-end gap-2">
+                        <span className="text-xs font-bold text-red-500 mr-1">確認釋放？</span>
+                        <button
+                          onClick={() => handleForceRelease(spot.id)}
+                          disabled={isReleasing}
+                          className="px-3 py-1.5 bg-red-500 text-white rounded-xl text-xs font-bold hover:bg-red-600 transition-all active:scale-95 disabled:opacity-50"
+                        >
+                          {isReleasing ? '執行中...' : '確認'}
+                        </button>
+                        <button
+                          onClick={() => setConfirmingId(null)}
+                          className="px-3 py-1.5 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 transition-all active:scale-95"
+                        >
+                          取消
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setConfirmingId(spot.id)}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-xl text-xs font-bold hover:bg-red-500 hover:text-white transition-all active:scale-95"
+                      >
+                        <ShieldAlert size={13} />
+                        強制釋放
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
+
+      {/* 筆數提示 */}
+      {filtered.length > 0 && (
+        <p className="text-center text-xs text-slate-400 font-bold mt-4">
+          共 {filtered.length} 筆 {query && `（搜尋「${query}」）`}
+        </p>
+      )}
     </div>
   );
 }

@@ -24,3 +24,8 @@ dist-ssr
 *.sw?
 
 .vercel
+
+# NOTE: 環境變數檔，包含敏感金鑰，絕對不可提交至 Git
+.env
+.env.*
+!.env.example

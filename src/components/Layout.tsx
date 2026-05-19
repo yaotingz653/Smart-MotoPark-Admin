@@ -1,8 +1,17 @@
-
+import { useState } from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
-import { LayoutDashboard, Car, Users, ShieldCheck, Grid3X3 } from 'lucide-react';
+import { LayoutDashboard, Car, Users, ShieldCheck, Grid3X3, Plus } from 'lucide-react';
+import type { GridContext } from '../types/grid';
+import AddArrayModal from './AddArrayModal';
 
-export default function Layout() {
+interface LayoutProps {
+  context: GridContext;
+}
+
+export default function Layout({ context }: LayoutProps) {
+  const { arrays, activeArrayId, setActiveArrayId, addArray } = context;
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
   return (
     <div className="min-h-screen flex bg-editorial-bg">
       {/* Sidebar */}
@@ -17,7 +26,7 @@ export default function Layout() {
           </div>
         </div>
 
-        <nav className="flex-1 p-6 flex flex-col gap-2">
+        <nav className="flex-1 p-6 flex flex-col gap-2 overflow-y-auto">
           <NavLink
             to="/dashboard"
             className={({ isActive }) =>
@@ -29,7 +38,7 @@ export default function Layout() {
             <LayoutDashboard size={20} />
             <span>Overview</span>
           </NavLink>
-          
+
           <NavLink
             to="/spots"
             className={({ isActive }) =>
@@ -65,16 +74,58 @@ export default function Layout() {
             <Grid3X3 size={20} />
             <span>Grid Config</span>
           </NavLink>
+
+          {/* 停車陣列切換區塊 */}
+          <div className="mt-2">
+            <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest px-4 mb-2">
+              停車陣列
+            </p>
+
+            <div className="flex flex-col gap-1">
+              {arrays.map(arr => (
+                <button
+                  key={arr.id}
+                  onClick={() => setActiveArrayId(arr.id)}
+                  className={`w-full text-left flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                    activeArrayId === arr.id
+                      ? 'bg-purple-50 text-[#8B5CF6] border border-purple-200'
+                      : 'text-slate-400 hover:bg-slate-50 hover:text-slate-700'
+                  }`}
+                >
+                  <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                    activeArrayId === arr.id ? 'bg-[#8B5CF6]' : 'bg-slate-300'
+                  }`} />
+                  <span className="truncate">{arr.name}</span>
+                  <span className="ml-auto text-[10px] text-slate-400 font-normal flex-shrink-0">
+                    {arr.rows}×{arr.cols}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            {/* ➕ 新增陣列按鈕 — 開啟 Modal 而非 window.prompt */}
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="mt-3 w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold border-2 border-dashed border-slate-200 text-slate-400 hover:border-[#8B5CF6] hover:text-[#8B5CF6] hover:bg-purple-50 transition-all duration-200 active:scale-95"
+            >
+              <Plus size={15} />
+              新增陣列
+            </button>
+          </div>
         </nav>
-
-
-
       </aside>
 
       {/* Main Content */}
       <main className="flex-1 overflow-auto bg-editorial-bg p-8">
         <Outlet />
       </main>
+
+      {/* 新增陣列 Modal */}
+      <AddArrayModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onConfirm={(name, rows, cols) => addArray(name, rows, cols)}
+      />
     </div>
   );
 }
