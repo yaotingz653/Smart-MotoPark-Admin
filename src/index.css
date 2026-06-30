@@ -1,0 +1,60 @@
+@import "tailwindcss";
+
+@theme {
+  --color-editorial-bg: #F8FAFC;
+  --color-editorial-ink: #0F172A;
+  --color-brand-orange: #FF5D2B;
+  --font-sans: "Plus Jakarta Sans", "Inter", system-ui, sans-serif;
+  --font-serif: "Outfit", sans-serif;
+}
+
+body {
+  @apply bg-editorial-bg text-editorial-ink font-sans antialiased;
+  background-image: radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.03) 0px, transparent 50%),
+                    radial-gradient(at 50% 0%, rgba(139, 92, 246, 0.03) 0px, transparent 50%);
+  background-attachment: fixed;
+}
+
+/* 磨砂玻璃卡片 */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 8px 32px 0 rgba(15, 23, 42, 0.02);
+}
+
+/* 懸浮發光特效 */
+.hover-glow {
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.hover-glow:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 20px 40px -15px rgba(15, 23, 42, 0.06),
+              0 0 30px 0 var(--glow-color, rgba(59, 130, 246, 0.15));
+}
+
+/* 客製化現代感捲軸 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(15, 23, 42, 0.1);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(15, 23, 42, 0.25);
+}
+
+/* 強制釋放確認時的呼吸紅黑邊框 */
+@keyframes row-danger-glow {
+  0%, 100% { background-color: rgba(254, 242, 242, 0.4); }
+  50% { background-color: rgba(254, 242, 242, 0.95); }
+}
+.danger-row-glow {
+  animation: row-danger-glow 2s infinite ease-in-out;
+}
