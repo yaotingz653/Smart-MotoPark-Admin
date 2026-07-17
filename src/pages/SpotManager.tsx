@@ -1,11 +1,10 @@
 import { useEffect, useState, useCallback } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { ShieldAlert, Search, Clock, User, Ban, AlertCircle } from 'lucide-react';
 import type { DbSpot } from '../types/grid';
 
-/**
- * 將停車時間轉為人類可讀的時長
- */
+// ─── 人類可讀停車時長 ─────────────────────────────────────────────────
 function formatDuration(occupiedAt: string | null): string {
   if (!occupiedAt) return '—';
   const diffMs = Date.now() - new Date(occupiedAt).getTime();
@@ -18,15 +17,70 @@ function formatDuration(occupiedAt: string | null): string {
   return '剛剛';
 }
 
+// ─── 灑花慶祝動畫特效組件 ─────────────────────────────────────────────
+function ConfettiEffect() {
+  return (
+    <div className="fixed inset-0 pointer-events-none z-[9999] overflow-hidden">
+      <style>{`
+        @keyframes confettiFall {
+          0% {
+            transform: translateY(0) rotate(0deg);
+            opacity: 1;
+          }
+          100% {
+            transform: translateY(105vh) rotate(720deg);
+            opacity: 0;
+          }
+        }
+        .animate-confettiFall {
+          animation-name: confettiFall;
+          animation-timing-function: linear;
+          animation-iteration-count: infinite;
+        }
+      `}</style>
+      {Array.from({ length: 50 }).map((_, i) => {
+        const left = Math.random() * 100;
+        const delay = Math.random() * 2;
+        const duration = 2.5 + Math.random() * 2;
+        const size = 6 + Math.random() * 8;
+        const colors = ['#FF5D2B', '#8B5CF6', '#10B981', '#3B82F6', '#F59E0B', '#EF4444'];
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        return (
+          <div
+            key={i}
+            className="absolute top-[-20px] rounded-sm animate-confettiFall"
+            style={{
+              left: `${left}%`,
+              width: `${size}px`,
+              height: `${size}px`,
+              backgroundColor: color,
+              animationDelay: `${delay}s`,
+              animationDuration: `${duration}s`,
+              transform: `rotate(${Math.random() * 360}deg)`,
+            }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
 export default function SpotManager() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
   const [spots, setSpots] = useState<(DbSpot & { dbTable: 'parking_spots' | 'car_parking_spots' })[]>([]);
   const [query, setQuery] = useState('');
-  // UUID → 使用者姓名的對照表
   const [userMap, setUserMap] = useState<Record<string, string>>({});
-  // 正在等待確認釋放的車位 id
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
-  // 正在執行釋放的車位 id
   const [releasingId, setReleasingId] = useState<string | null>(null);
+
+  // 是否開啟一鍵排查新手導覽
+  const queryParams = new URLSearchParams(location.search);
+  const isGuide = queryParams.get('guide') === 'troubleshoot';
+
+  // 慶祝灑花狀態
+  const [showConfetti, setShowConfetti] = useState(false);
 
   const fetchSpots = useCallback(async () => {
     try {
@@ -44,10 +98,6 @@ export default function SpotManager() {
     }
   }, []);
 
-  /**
-   * 取得所有使用者，建立 UUID → 姓名對照表
-   * 讓 Occupied By 欄位顯示可讀姓名而非 UUID
-   */
   const fetchUserMap = useCallback(async () => {
     const { data } = await supabase.auth.admin.listUsers();
     if (data?.users) {
@@ -73,7 +123,7 @@ export default function SpotManager() {
     const sub2 = supabase.channel('spots-manager-car')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'car_parking_spots' }, fetchSpots)
       .subscribe();
-    return () => { 
+    return () => {
       supabase.removeChannel(sub1);
       supabase.removeChannel(sub2);
     };
@@ -86,15 +136,24 @@ export default function SpotManager() {
       occupied_by: null,
       occupied_at: null,
     }).eq('id', id);
+
     setConfirmingId(null);
     setReleasingId(null);
     await fetchSpots();
-  }, [fetchSpots]);
 
-  // 統計數字
-  const totalCount  = spots.length;
-  const occupiedCount  = spots.filter(s => s.status === 'occupied' || s.status === 'mine').length;
-  const disabledCount  = spots.filter(s => s.status === 'disabled').length;
+    if (isGuide) {
+      // 觸發灑花特效，並在 3.5 秒後關閉導覽參數
+      setShowConfetti(true);
+      setTimeout(() => {
+        setShowConfetti(false);
+        navigate('/spots', { replace: true });
+      }, 3500);
+    }
+  }, [fetchSpots, isGuide, navigate]);
+
+  const totalCount = spots.length;
+  const occupiedCount = spots.filter(s => s.status === 'occupied' || s.status === 'mine').length;
+  const disabledCount = spots.filter(s => s.status === 'disabled').length;
 
   const filtered = spots.filter(s =>
     s.number.toLowerCase().includes(query.toLowerCase()) ||
@@ -102,7 +161,10 @@ export default function SpotManager() {
   );
 
   return (
-    <div className="max-w-5xl mx-auto">
+    <div className="max-w-5xl mx-auto relative">
+      {/* 灑花慶祝效果 */}
+      {showConfetti && <ConfettiEffect />}
+
       {/* 頁首 */}
       <div className="mb-8 flex justify-between items-end">
         <div>
@@ -122,6 +184,21 @@ export default function SpotManager() {
           />
         </div>
       </div>
+
+      {/* 新手任務引導橫幅 */}
+      {isGuide && (
+        <div className="mb-6 p-5 bg-[#FF5D2B]/10 border border-[#FF5D2B]/30 rounded-3xl flex items-center justify-between text-xs font-bold text-[#FF5D2B] animate-pulse shadow-sm">
+          <span className="flex items-center gap-2">
+            💡 新手任務引導：系統已為您篩選出需處置的車位。請點選列表中第一個高亮車位右側的「強制釋放」進行排查！
+          </span>
+          <button
+            onClick={() => navigate('/spots', { replace: true })}
+            className="px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl text-slate-500 hover:text-slate-700 text-[10px] font-extrabold transition-all cursor-pointer shrink-0 shadow-sm"
+          >
+            關閉引導
+          </button>
+        </div>
+      )}
 
       {/* 快速統計條 */}
       <div className="grid grid-cols-3 gap-4 mb-6">
@@ -189,7 +266,7 @@ export default function SpotManager() {
                   </div>
                 </td>
               </tr>
-            ) : filtered.map(spot => {
+            ) : filtered.map((spot, index) => {
               const isConfirming = confirmingId === spot.id;
               const isReleasing = releasingId === spot.id;
               const userName = spot.occupied_by
@@ -202,8 +279,18 @@ export default function SpotManager() {
                 disabled: { label: '停用',     bg: 'bg-slate-100', text: 'text-slate-500' },
               }[spot.status as 'mine' | 'occupied' | 'disabled'] ?? { label: spot.status, bg: 'bg-slate-100', text: 'text-slate-500' };
 
+              // 導覽模式下，針對第一個車位進行高亮發光框提示
+              const isGuideTarget = isGuide && index === 0;
+
               return (
-                <tr key={spot.id} className={`border-b border-slate-50 transition-all duration-300 ${isConfirming ? 'danger-row-glow border-l-4 border-red-500' : 'hover:bg-slate-50/50'}`}>
+                <tr
+                  key={spot.id}
+                  className={`border-b border-slate-50 transition-all duration-300 ${
+                    isConfirming ? 'danger-row-glow border-l-4 border-red-500' : 'hover:bg-slate-50/50'
+                  } ${
+                    isGuideTarget ? 'ring-2 ring-[#FF5D2B] ring-offset-2 bg-orange-500/5 animate-pulse z-10 relative' : ''
+                  }`}
+                >
                   {/* 車位號碼 */}
                   <td className="py-4 px-6 font-bold text-editorial-ink font-mono">{spot.number}</td>
 
@@ -225,7 +312,7 @@ export default function SpotManager() {
                     </span>
                   </td>
 
-                  {/* 使用者（UUID → 姓名） */}
+                  {/* 使用者 */}
                   <td className="py-4 px-6">
                     {userName ? (
                       <div className="flex items-center gap-2">
@@ -245,7 +332,7 @@ export default function SpotManager() {
                     </div>
                   </td>
 
-                  {/* 操作欄：未確認時顯示按鈕，確認中顯示 Yes/Cancel */}
+                  {/* 操作欄 */}
                   <td className="py-4 px-6 text-right">
                     {isConfirming ? (
                       <div className="flex items-center justify-end gap-2">
@@ -253,7 +340,7 @@ export default function SpotManager() {
                         <button
                           onClick={() => handleForceRelease(spot.id, spot.dbTable)}
                           disabled={isReleasing}
-                          className="px-3 py-1.5 bg-red-500 text-white rounded-xl text-xs font-bold hover:bg-red-600 transition-all active:scale-95 disabled:opacity-50"
+                          className="px-3 py-1.5 bg-red-500 text-white rounded-xl text-xs font-bold hover:bg-red-600 transition-all active:scale-95 disabled:opacity-50 shadow-sm"
                         >
                           {isReleasing ? '執行中...' : '確認'}
                         </button>
@@ -267,7 +354,11 @@ export default function SpotManager() {
                     ) : (
                       <button
                         onClick={() => setConfirmingId(spot.id)}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-xl text-xs font-bold hover:bg-red-500 hover:text-white transition-all active:scale-95"
+                        className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-sm ${
+                          isGuideTarget
+                            ? 'bg-[#FF5D2B] text-white hover:bg-orange-600 scale-105 shadow-orange-500/20'
+                            : 'bg-red-50 text-red-600 hover:bg-red-500 hover:text-white'
+                        }`}
                       >
                         <ShieldAlert size={13} />
                         強制釋放

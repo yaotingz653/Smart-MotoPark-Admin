@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { translations } from './lib/i18n';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
 import SpotManager from './pages/SpotManager';
@@ -40,6 +41,119 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('park_arrays', JSON.stringify(arrays));
   }, [arrays]);
+
+  // 語系狀態，優先從 localStorage 讀取
+  const [lang, setLang] = useState<'zh' | 'en'>(() => {
+    const saved = localStorage.getItem('lang');
+    return (saved === 'zh' || saved === 'en') ? saved : 'zh';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('lang', lang);
+  }, [lang]);
+
+  // 翻譯函式，支援 {placeholder} 參數替換
+  const t = useCallback((key: string, replacements?: Record<string, string | number>) => {
+    const dict = translations[lang] || translations.zh;
+    let text = (dict as any)[key] || key;
+    if (replacements) {
+      Object.entries(replacements).forEach(([k, v]) => {
+        text = text.replace(`{${k}}`, String(v));
+      });
+    }
+    return text;
+  }, [lang]);
+
+  // 從 Supabase 自動掃描並還原缺失的 ARR- 歷史陣列選單
+  const syncArraysFromDb = useCallback(async () => {
+    try {
+      const [motoRes, carRes] = await Promise.all([
+        supabase.from('parking_spots').select('id, number').like('id', 'ARR-%'),
+        supabase.from('car_parking_spots').select('id, number').like('id', 'ARR-%'),
+      ]);
+
+      const foundMap = new Map<string, {
+        id: string;
+        maxRow: number;
+        maxCol: number;
+        dbTable: 'parking_spots' | 'car_parking_spots';
+      }>();
+
+      const processSpots = (spots: { id: string }[] | null, dbTable: 'parking_spots' | 'car_parking_spots') => {
+        if (!spots) return;
+        spots.forEach(spot => {
+          const parts = spot.id.split('-');
+          if (parts.length >= 3) {
+            const prefix = parts.slice(0, parts.length - 2).join('-');
+            const r = parseInt(parts[parts.length - 2]);
+            const c = parseInt(parts[parts.length - 1]);
+            
+            if (!isNaN(r) && !isNaN(c)) {
+              const existing = foundMap.get(prefix);
+              if (existing) {
+                existing.maxRow = Math.max(existing.maxRow, r);
+                existing.maxCol = Math.max(existing.maxCol, c);
+              } else {
+                foundMap.set(prefix, {
+                  id: prefix,
+                  maxRow: r,
+                  maxCol: c,
+                  dbTable
+                });
+              }
+            }
+          }
+        });
+      };
+
+      processSpots(motoRes.data, 'parking_spots');
+      processSpots(carRes.data, 'car_parking_spots');
+
+      if (foundMap.size === 0) return;
+
+      setArrays(prev => {
+        let updated = [...prev];
+        let hasChanges = false;
+
+        foundMap.forEach((val, prefix) => {
+          const exists = updated.some(a => a.id === prefix);
+          if (!exists) {
+            let name = `${prefix} 停車場`;
+            if (prefix.toLowerCase().includes('tumo')) {
+              name = '主顧停車場';
+            } else if (prefix.includes('圖莫')) {
+              name = '圖莫停車場';
+            }
+
+            const newArray: ParkingArray = {
+              id: prefix,
+              name: name,
+              rows: val.maxRow + 1,
+              cols: val.maxCol + 1,
+              spots: [], 
+              isLive: true,
+              dbTable: val.dbTable,
+              arrayType: val.dbTable === 'car_parking_spots' ? 'car' : 'motorcycle',
+            };
+
+            updated.push(newArray);
+            hasChanges = true;
+          }
+        });
+
+        if (hasChanges) {
+          localStorage.setItem('park_arrays', JSON.stringify(updated));
+        }
+        return updated;
+      });
+    } catch (err) {
+      console.error('自動從 Supabase 同步陣列清單失敗：', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    syncArraysFromDb();
+  }, [syncArraysFromDb]);
 
   /**
    * 新增陣列：由 Modal 傳入名稱、初始行列數與資料表類型，全部空位讓使用者從頭手動配置
@@ -144,6 +258,9 @@ export default function App() {
     addArray,
     updateArray,
     deleteArray,
+    lang,
+    setLang,
+    t,
   };
 
   return (

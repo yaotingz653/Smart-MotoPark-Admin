@@ -9,7 +9,7 @@ interface LayoutProps {
 }
 
 export default function Layout({ context }: LayoutProps) {
-  const { arrays, activeArrayId, setActiveArrayId, addArray, deleteArray } = context;
+  const { arrays, activeArrayId, setActiveArrayId, addArray, deleteArray, lang, setLang, t } = context;
   const [isModalOpen, setIsModalOpen] = useState(false);
   const navigate = useNavigate();
 
@@ -21,10 +21,17 @@ export default function Layout({ context }: LayoutProps) {
           <div className="w-10 h-10 bg-gradient-to-tr from-slate-900 to-slate-700 rounded-2xl flex items-center justify-center text-white shadow-md shadow-slate-900/10">
             <ShieldCheck size={20} className="animate-pulse" />
           </div>
-          <div>
+          <div className="flex-grow min-w-0">
             <h2 className="font-serif font-black text-lg text-editorial-ink tracking-wide">Admin</h2>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">Portal</p>
           </div>
+          <button
+            onClick={() => setLang(lang === 'zh' ? 'en' : 'zh')}
+            className="flex-shrink-0 px-2 py-1 text-[9px] font-extrabold border border-slate-200 hover:border-slate-400 hover:bg-slate-50 text-slate-500 rounded-lg transition-all cursor-pointer active:scale-95 notranslate"
+            translate="no"
+          >
+            {lang === 'zh' ? 'EN' : '繁中'}
+          </button>
         </div>
 
         <nav className="flex-1 p-6 flex flex-col gap-2 overflow-y-auto">
@@ -37,7 +44,7 @@ export default function Layout({ context }: LayoutProps) {
             }
           >
             <LayoutDashboard size={20} />
-            <span>Overview</span>
+            <span>{t('nav.overview')}</span>
           </NavLink>
 
           <NavLink
@@ -49,7 +56,7 @@ export default function Layout({ context }: LayoutProps) {
             }
           >
             <Car size={20} />
-            <span>Spot Control</span>
+            <span>{t('nav.spots')}</span>
           </NavLink>
 
           <NavLink
@@ -61,7 +68,7 @@ export default function Layout({ context }: LayoutProps) {
             }
           >
             <Users size={20} />
-            <span>Directory</span>
+            <span>{t('nav.directory')}</span>
           </NavLink>
 
           <NavLink
@@ -73,7 +80,7 @@ export default function Layout({ context }: LayoutProps) {
             }
           >
             <MessageSquare size={20} />
-            <span>Community</span>
+            <span>{t('nav.community')}</span>
           </NavLink>
 
           <NavLink
@@ -85,13 +92,13 @@ export default function Layout({ context }: LayoutProps) {
             }
           >
             <Grid3X3 size={20} />
-            <span>Grid Config</span>
+            <span>{t('nav.grid')}</span>
           </NavLink>
 
           {/* 停車陣列切換區塊 */}
           <div className="mt-2">
             <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest px-4 mb-2">
-              停車陣列
+              {t('grid.title')}
             </p>
 
             <div className="flex flex-col gap-1.5">
@@ -139,15 +146,29 @@ export default function Layout({ context }: LayoutProps) {
               className="mt-3.5 w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold border-2 border-dashed border-slate-200 text-slate-400 hover:border-[#8B5CF6] hover:text-[#8B5CF6] hover:bg-purple-500/5 transition-all duration-300 active:scale-95 cursor-pointer"
             >
               <Plus size={15} />
-              新增陣列
+              {t('grid.add_array')}
             </button>
           </div>
+
+          {/* 幫助引導按鈕 */}
+          <button
+            onClick={() => {
+              localStorage.removeItem('has_seen_dashboard_tour');
+              navigate('/dashboard');
+              setTimeout(() => {
+                window.dispatchEvent(new Event('start-onboarding-tour'));
+              }, 100);
+            }}
+            className="mt-6 w-full flex items-center justify-center gap-2 px-4 py-2 text-xs font-bold text-slate-400 hover:text-slate-600 hover:bg-slate-100/50 rounded-xl transition-all active:scale-95 cursor-pointer border border-transparent hover:border-slate-100"
+          >
+            幫助導覽 ❓
+          </button>
         </nav>
       </aside>
 
       {/* Main Content */}
       <main className="flex-1 overflow-auto bg-editorial-bg p-8">
-        <Outlet />
+        <Outlet context={context} />
       </main>
 
       {/* 新增陣列 Modal */}

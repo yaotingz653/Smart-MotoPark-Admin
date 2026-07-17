@@ -34,6 +34,9 @@ export interface GridContext {
   addArray: (name: string, rows: number, cols: number, dbTable: 'parking_spots' | 'car_parking_spots') => void;
   updateArray: (id: string, updates: Partial<ParkingArray>) => void;
   deleteArray: (id: string) => void;
+  lang: 'zh' | 'en';
+  setLang: (lang: 'zh' | 'en') => void;
+  t: (key: string, replacements?: Record<string, string | number>) => string;
 }
 
 /**
