@@ -9,7 +9,7 @@ interface LayoutProps {
 }
 
 export default function Layout({ context }: LayoutProps) {
-  const { arrays, activeArrayId, setActiveArrayId, addArray, deleteArray, lang, setLang, t } = context;
+  const { arrays, activeArrayId, setActiveArrayId, addArray, deleteArray, lang, setLang, t, vehicleType } = context;
   const [isModalOpen, setIsModalOpen] = useState(false);
   const navigate = useNavigate();
 
@@ -102,7 +102,11 @@ export default function Layout({ context }: LayoutProps) {
             </p>
 
             <div className="flex flex-col gap-1.5">
-              {arrays.map(arr => (
+              {arrays.filter(arr => {
+                const isMoto = vehicleType === 'moto';
+                const type = arr.arrayType || (arr.id === 'array-default' ? 'motorcycle' : 'car');
+                return isMoto ? type === 'motorcycle' : type === 'car';
+              }).map(arr => (
                 <div key={arr.id} className="relative group/item flex items-center w-full">
                   <button
                     onClick={() => setActiveArrayId(arr.id)}

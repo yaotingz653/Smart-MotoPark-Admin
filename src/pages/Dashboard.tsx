@@ -281,10 +281,23 @@ function OnboardingPanel({ anomalyCount, messageCount, t }: { anomalyCount: numb
 export default function Dashboard() {
   const navigate = useNavigate();
   const context = useOutletContext<GridContext>();
-  const { t } = context;
+  const { t, vehicleType, setVehicleType } = context;
   const arrays = context?.arrays;
 
   const [stats, setStats] = useState({
+    // 機車 (Motorcycle)
+    motoTotal: 575, // 固定為 575
+    motoAvailable: 0,
+    motoOccupied: 0,
+    motoDisabled: 0,
+
+    // 汽車 (Car)
+    carTotal: 0,
+    carAvailable: 0,
+    carOccupied: 0,
+    carDisabled: 0,
+
+    // 合計
     totalSpots: 0,
     availableSpots: 0,
     occupiedSpots: 0,
@@ -338,16 +351,35 @@ export default function Dashboard() {
       if (motoSpotsRes.error) console.error('抓取機車統計資料失敗：', motoSpotsRes.error);
       if (carSpotsRes.error) console.error('抓取汽車統計資料失敗：', carSpotsRes.error);
 
-      const allSpots = [
-        ...(motoSpotsRes.data || []),
-        ...(carSpotsRes.data || [])
-      ];
+      const motoSpots = motoSpotsRes.data || [];
+      const carSpots = carSpotsRes.data || [];
+
+      // 1. 機車計算 (固定總數 575)
+      const motoOccupied = motoSpots.filter(s => s.status === 'occupied' || s.status === 'mine').length;
+      const motoDisabled = motoSpots.filter(s => s.status === 'disabled').length;
+      const motoAvailable = Math.max(0, 575 - motoOccupied - motoDisabled);
+
+      // 2. 汽車計算 (根據資料表實際長度)
+      const carTotal = carSpots.length;
+      const carOccupied = carSpots.filter(s => s.status === 'occupied' || s.status === 'mine').length;
+      const carDisabled = carSpots.filter(s => s.status === 'disabled').length;
+      const carAvailable = Math.max(0, carTotal - carOccupied - carDisabled);
 
       setStats({
-        totalSpots: allSpots.length,
-        availableSpots: allSpots.filter(s => s.status === 'available').length,
-        occupiedSpots: allSpots.filter(s => s.status === 'occupied' || s.status === 'mine').length,
-        disabledSpots: allSpots.filter(s => s.status === 'disabled').length,
+        motoTotal: 575,
+        motoAvailable,
+        motoOccupied,
+        motoDisabled,
+
+        carTotal,
+        carAvailable,
+        carOccupied,
+        carDisabled,
+
+        totalSpots: 575 + carTotal,
+        availableSpots: motoAvailable + carAvailable,
+        occupiedSpots: motoOccupied + carOccupied,
+        disabledSpots: motoDisabled + carDisabled,
         totalUsers: usersRes.data?.users?.length ?? 0,
         totalMessages: msgsRes.data?.length ?? 0,
       });
@@ -372,14 +404,23 @@ export default function Dashboard() {
     };
   }, [fetchStats, arrays]);
 
-  const anomalyCount = stats.occupiedSpots + stats.disabledSpots;
-  const currentRate = stats.totalSpots > 0 ? (stats.occupiedSpots / stats.totalSpots) * 100 : 0;
+  const isMoto = vehicleType === 'moto';
+
+  const anomalyCount = isMoto
+    ? (stats.motoOccupied + stats.motoDisabled)
+    : (stats.carOccupied + stats.carDisabled);
+
+  const currentRate = isMoto
+    ? (575 > 0 ? (stats.motoOccupied / 575) * 100 : 0)
+    : (stats.carTotal > 0 ? (stats.carOccupied / stats.carTotal) * 100 : 0);
 
   const statCards = [
     {
-      label: t('dash.available'),
-      value: stats.availableSpots,
-      sub: `/ ${stats.totalSpots}`,
+      label: isMoto
+        ? (context.lang === 'en' ? 'Moto Available' : '機車剩餘空位')
+        : (context.lang === 'en' ? 'Car Available' : '汽車剩餘空位'),
+      value: isMoto ? stats.motoAvailable : stats.carAvailable,
+      sub: isMoto ? `/ 575` : `/ ${stats.carTotal}`,
       color: 'text-[#10B981]',
       bg: 'bg-emerald-50',
       icon: <CheckCircle2 size={22} />,
@@ -387,19 +428,25 @@ export default function Dashboard() {
       glowColor: 'rgba(16, 185, 129, 0.18)',
     },
     {
-      label: t('dash.occupied'),
-      value: stats.occupiedSpots,
+      label: isMoto
+        ? (context.lang === 'en' ? 'Moto Occupied' : '機車已佔用')
+        : (context.lang === 'en' ? 'Car Occupied' : '汽車已佔用'),
+      value: isMoto ? stats.motoOccupied : stats.carOccupied,
       sub: t('dash.spots_unit'),
       color: 'text-[#EF4444]',
       bg: 'bg-red-50',
       icon: <XCircle size={22} />,
       iconColor: 'text-[#EF4444]',
       glowColor: 'rgba(239, 68, 68, 0.18)',
-      tooltip: '包含非官方系統的外部佔用車輛與學生的正常停車車位',
+      tooltip: isMoto
+        ? '包含非官方系統的外部佔用機車與學生的正常停車機車位'
+        : '包含非官方系統的外部佔用汽車與學生的正常停車汽車位',
     },
     {
-      label: t('dash.disabled'),
-      value: stats.disabledSpots,
+      label: isMoto
+        ? (context.lang === 'en' ? 'Moto Disabled' : '機車已停用')
+        : (context.lang === 'en' ? 'Car Disabled' : '汽車已停用'),
+      value: isMoto ? stats.motoDisabled : stats.carDisabled,
       sub: t('dash.spots_unit'),
       color: 'text-slate-500',
       bg: 'bg-slate-50',
@@ -428,14 +475,41 @@ export default function Dashboard() {
           <span className="text-[10px] font-bold text-slate-400 tracking-widest uppercase mb-2 block">{t('dash.subtitle')}</span>
           <h1 className="text-4xl font-serif font-black text-editorial-ink tracking-tight">{t('dash.title')}</h1>
         </div>
-        {/* 手動幫助引導按鈕 */}
-        <button
-          onClick={() => setTourStep(0)}
-          className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 hover:border-slate-400 hover:bg-slate-50 rounded-xl text-slate-500 hover:text-slate-700 text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-sm"
-        >
-          <HelpCircle size={15} />
-          幫助導覽
-        </button>
+
+        <div className="flex items-center gap-3">
+          {/* 汽機車一鍵切換膠囊按鈕 */}
+          <div className="flex bg-slate-100/80 p-1 rounded-2xl border border-slate-200/50 shadow-inner">
+            <button
+              onClick={() => setVehicleType('moto')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                isMoto
+                  ? 'bg-white text-[#8B5CF6] shadow-sm'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              🏍️ {context.lang === 'en' ? 'Motorcycle' : '機車監控'}
+            </button>
+            <button
+              onClick={() => setVehicleType('car')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                !isMoto
+                  ? 'bg-white text-[#8B5CF6] shadow-sm'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              🚗 {context.lang === 'en' ? 'Car' : '汽車監控'}
+            </button>
+          </div>
+
+          {/* 手動幫助引導按鈕 */}
+          <button
+            onClick={() => setTourStep(0)}
+            className="flex items-center gap-1.5 px-3 py-2 border border-slate-200 hover:border-slate-400 hover:bg-slate-50 rounded-2xl text-slate-500 hover:text-slate-700 text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-sm"
+          >
+            <HelpCircle size={15} />
+            {context.lang === 'en' ? 'Guide' : '幫助導覽'}
+          </button>
+        </div>
       </div>
 
       {/* 兩欄式佈局 */}
@@ -475,7 +549,12 @@ export default function Dashboard() {
 
           {/* SVG 圓環圖 + SVG 歷史趨勢圖 左右並排 */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <DonutChart available={stats.availableSpots} occupied={stats.occupiedSpots} total={stats.totalSpots} t={t} />
+            <DonutChart
+              available={isMoto ? stats.motoAvailable : stats.carAvailable}
+              occupied={isMoto ? stats.motoOccupied : stats.carOccupied}
+              total={isMoto ? 575 : stats.carTotal}
+              t={t}
+            />
             <TrendChart currentRate={currentRate} t={t} />
           </div>
         </div>

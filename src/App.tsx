@@ -36,11 +36,34 @@ export default function App() {
     return [DEFAULT_ARRAY];
   });
   const [activeArrayId, setActiveArrayId] = useState<string>(DEFAULT_ARRAY.id);
+  const [vehicleType, setVehicleType] = useState<'moto' | 'car'>('moto');
 
   // 當 arrays 變更時，自動儲存至 localStorage
   useEffect(() => {
     localStorage.setItem('park_arrays', JSON.stringify(arrays));
   }, [arrays]);
+
+  // 當車種類型變更時，自動同步切換目前活動的停車陣列
+  useEffect(() => {
+    const isMoto = vehicleType === 'moto';
+    const activeArray = arrays.find(a => a.id === activeArrayId);
+    
+    if (activeArray) {
+      const activeType = activeArray.arrayType || (activeArray.id === 'array-default' ? 'motorcycle' : 'car');
+      const targetType = isMoto ? 'motorcycle' : 'car';
+      
+      if (activeType !== targetType) {
+        const firstMatchingArray = arrays.find(arr => {
+          const type = arr.arrayType || (arr.id === 'array-default' ? 'motorcycle' : 'car');
+          return type === targetType;
+        });
+        
+        if (firstMatchingArray) {
+          setActiveArrayId(firstMatchingArray.id);
+        }
+      }
+    }
+  }, [vehicleType, arrays, activeArrayId]);
 
   // 語系狀態，優先從 localStorage 讀取
   const [lang, setLang] = useState<'zh' | 'en'>(() => {
@@ -69,7 +92,7 @@ export default function App() {
     try {
       const [motoRes, carRes] = await Promise.all([
         supabase.from('parking_spots').select('id, number').like('id', 'ARR-%'),
-        supabase.from('car_parking_spots').select('id, number').like('id', 'ARR-%'),
+        supabase.from('car_parking_spots').select('id, number'),
       ]);
 
       const foundMap = new Map<string, {
@@ -119,7 +142,9 @@ export default function App() {
           const exists = updated.some(a => a.id === prefix);
           if (!exists) {
             let name = `${prefix} 停車場`;
-            if (prefix.toLowerCase().includes('tumo')) {
+            if (prefix === 'CAR') {
+              name = '汽車停車場';
+            } else if (prefix.toLowerCase().includes('tumo')) {
               name = '主顧停車場';
             } else if (prefix.includes('圖莫')) {
               name = '圖莫停車場';
@@ -261,6 +286,8 @@ export default function App() {
     lang,
     setLang,
     t,
+    vehicleType,
+    setVehicleType,
   };
 
   return (

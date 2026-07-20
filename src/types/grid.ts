@@ -37,6 +37,8 @@ export interface GridContext {
   lang: 'zh' | 'en';
   setLang: (lang: 'zh' | 'en') => void;
   t: (key: string, replacements?: Record<string, string | number>) => string;
+  vehicleType: 'moto' | 'car';
+  setVehicleType: (type: 'moto' | 'car') => void;
 }
 
 /**

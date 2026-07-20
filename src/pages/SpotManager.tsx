@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useOutletContext } from 'react-router-dom';
+import type { GridContext } from '../types/grid';
 import { supabase } from '../lib/supabase';
 import { ShieldAlert, Search, Clock, User, Ban, AlertCircle } from 'lucide-react';
 import type { DbSpot } from '../types/grid';
@@ -68,6 +69,9 @@ function ConfettiEffect() {
 export default function SpotManager() {
   const navigate = useNavigate();
   const location = useLocation();
+  const context = useOutletContext<GridContext>();
+  const { vehicleType } = context;
+  const isMoto = vehicleType === 'moto';
 
   const [spots, setSpots] = useState<(DbSpot & { dbTable: 'parking_spots' | 'car_parking_spots' })[]>([]);
   const [query, setQuery] = useState('');
@@ -151,11 +155,16 @@ export default function SpotManager() {
     }
   }, [fetchSpots, isGuide, navigate]);
 
-  const totalCount = spots.length;
-  const occupiedCount = spots.filter(s => s.status === 'occupied' || s.status === 'mine').length;
-  const disabledCount = spots.filter(s => s.status === 'disabled').length;
+  // 先篩選當前模式的車位 (機車為 'parking_spots', 汽車為 'car_parking_spots')
+  const currentSpots = spots.filter(s =>
+    isMoto ? s.dbTable === 'parking_spots' : s.dbTable === 'car_parking_spots'
+  );
 
-  const filtered = spots.filter(s =>
+  const totalCount = currentSpots.length;
+  const occupiedCount = currentSpots.filter(s => s.status === 'occupied' || s.status === 'mine').length;
+  const disabledCount = currentSpots.filter(s => s.status === 'disabled').length;
+
+  const filtered = currentSpots.filter(s =>
     s.number.toLowerCase().includes(query.toLowerCase()) ||
     (s.occupied_by ? (userMap[s.occupied_by] || '') : '').toLowerCase().includes(query.toLowerCase())
   );
