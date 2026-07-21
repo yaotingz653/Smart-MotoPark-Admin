@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Car, Users, ShieldCheck, Grid3X3, Plus, MessageSquare, Trash2 } from 'lucide-react';
+import { LayoutDashboard, Car, Users, ShieldCheck, Grid3X3, Plus, MessageSquare, Trash2, Camera, LogOut } from 'lucide-react';
 import type { GridContext } from '../types/grid';
 import AddArrayModal from './AddArrayModal';
+import { supabase } from '../lib/supabase';
 
 interface LayoutProps {
   context: GridContext;
@@ -12,6 +13,11 @@ export default function Layout({ context }: LayoutProps) {
   const { arrays, activeArrayId, setActiveArrayId, addArray, deleteArray, lang, setLang, t, vehicleType } = context;
   const [isModalOpen, setIsModalOpen] = useState(false);
   const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    navigate('/login', { replace: true });
+  };
 
   return (
     <div className="min-h-screen flex bg-editorial-bg">
@@ -46,6 +52,19 @@ export default function Layout({ context }: LayoutProps) {
             <LayoutDashboard size={20} />
             <span>{t('nav.overview')}</span>
           </NavLink>
+
+          {vehicleType === 'car' && <NavLink
+            to="/monitor"
+            className={({ isActive }) =>
+              `flex items-center gap-4 px-4 py-3 rounded-2xl font-bold transition-all duration-300 active:scale-95 ${
+                isActive ? 'bg-[#8B5CF6] text-white shadow-lg shadow-purple-500/20' : 'text-slate-400 hover:bg-slate-100/50 hover:text-[#8B5CF6]'
+              }`
+            }
+          >
+            <Camera size={20} />
+            <span>汽車影像監控</span>
+          </NavLink>
+          }
 
           <NavLink
             to="/spots"
@@ -166,6 +185,13 @@ export default function Layout({ context }: LayoutProps) {
             className="mt-6 w-full flex items-center justify-center gap-2 px-4 py-2 text-xs font-bold text-slate-400 hover:text-slate-600 hover:bg-slate-100/50 rounded-xl transition-all active:scale-95 cursor-pointer border border-transparent hover:border-slate-100"
           >
             幫助導覽 ❓
+          </button>
+          <button
+            onClick={handleSignOut}
+            className="mt-2 w-full flex items-center justify-center gap-2 px-4 py-2 text-xs font-bold text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all active:scale-95 cursor-pointer border border-transparent hover:border-red-100"
+          >
+            <LogOut size={15} />
+            登出帳號
           </button>
         </nav>
       </aside>

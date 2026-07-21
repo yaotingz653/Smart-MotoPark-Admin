@@ -3,6 +3,7 @@ export const translations = {
     // Navigation / General
     'admin.portal': '行政入口網站',
     'nav.overview': '概述',
+    'nav.monitor': '即時監控',
     'nav.spots': '斑點控制', // 原本是「斑點控制」，為了維持原本專案的字眼我們用這個，但其實是 Spot Control
     'nav.directory': '目錄',
     'nav.community': '社群',
@@ -99,6 +100,7 @@ export const translations = {
     // Navigation / General
     'admin.portal': 'Admin Portal',
     'nav.overview': 'Overview',
+    'nav.monitor': 'Monitor',
     'nav.spots': 'Spot Control',
     'nav.directory': 'Directory',
     'nav.community': 'Community',

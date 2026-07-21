@@ -414,6 +414,9 @@ export default function Dashboard() {
     ? (575 > 0 ? (stats.motoOccupied / 575) * 100 : 0)
     : (stats.carTotal > 0 ? (stats.carOccupied / stats.carTotal) * 100 : 0);
 
+  const activeOccupied = isMoto ? stats.motoOccupied : stats.carOccupied;
+  const activeDisabled = isMoto ? stats.motoDisabled : stats.carDisabled;
+
   const statCards = [
     {
       label: isMoto
@@ -595,7 +598,7 @@ export default function Dashboard() {
                     <span>{anomalyCount}</span> {t('dash.anomalies_title')}
                   </p>
                   <p className="text-xs text-amber-500 mt-1 notranslate" translate="no">
-                    {t('dash.anomalies_sub', { occupied: stats.occupiedSpots, disabled: stats.disabledSpots })}
+          {t('dash.anomalies_sub', { occupied: activeOccupied, disabled: activeDisabled })}
                   </p>
                 </>
               ) : (
