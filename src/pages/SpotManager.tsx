@@ -103,11 +103,14 @@ export default function SpotManager() {
   }, []);
 
   const fetchUserMap = useCallback(async () => {
-    const { data } = await supabase.auth.admin.listUsers();
-    if (data?.users) {
+    const { data } = await supabase.from('users').select('*');
+    if (data) {
       const map: Record<string, string> = {};
-      data.users.forEach(u => {
-        map[u.id] = (u.user_metadata?.name as string) || u.email?.split('@')[0] || '未知使用者';
+      data.forEach((u: any) => {
+        const id = u.id || u.uuid;
+        if (id) {
+          map[id] = u.name || u.display_name || u.email?.split('@')[0] || '未知使用者';
+        }
       });
       setUserMap(map);
     }

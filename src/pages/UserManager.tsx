@@ -23,40 +23,47 @@ export default function UserManager() {
   const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
+      // 直接查詢剛才成功建立的 public.users SQL 視圖 (VIEW)，完全避免 403 權限拒絕錯誤
       const [usersRes, motoSpotsRes, carSpotsRes] = await Promise.all([
-        supabase.auth.admin.listUsers().catch(() => ({ data: { users: [] } })),
+        supabase.from('users').select('*'),
         supabase.from('parking_spots')
-          .select('number, occupied_by')
-          .in('status', ['mine', 'occupied'])
-          .not('occupied_by', 'is', null),
+          .select('number, occupied_by, status')
+          .in('status', ['mine', 'occupied']),
         supabase.from('car_parking_spots')
-          .select('number, occupied_by')
-          .in('status', ['mine', 'occupied'])
-          .not('occupied_by', 'is', null),
+          .select('number, occupied_by, status')
+          .in('status', ['mine', 'occupied']),
       ]);
 
-      // 建立 UUID → 車位號碼的對照表
-      const spotByUserId: Record<string, string> = {};
-      const motoSpots = motoSpotsRes.data as { number: string; occupied_by: string | null }[] | null;
-      const carSpots = carSpotsRes.data as { number: string; occupied_by: string | null }[] | null;
+      if (usersRes.error) {
+        console.error('抓取 users 視圖失敗：', usersRes.error);
+      }
 
-      motoSpots?.forEach(s => {
+      // 建立 UUID → 車位號碼與類型的對照表
+      const spotByUserId: Record<string, string> = {};
+      const motoSpots = (motoSpotsRes.data || []) as { number: string; occupied_by: string | null; status: string }[];
+      const carSpots = (carSpotsRes.data || []) as { number: string; occupied_by: string | null; status: string }[];
+
+      motoSpots.forEach(s => {
         if (s.occupied_by) spotByUserId[s.occupied_by] = `機車 · ${s.number}`;
       });
-      carSpots?.forEach(s => {
+      carSpots.forEach(s => {
         if (s.occupied_by) spotByUserId[s.occupied_by] = `汽車 · ${s.number}`;
       });
 
-      if (usersRes.data?.users) {
-        const mapped: UserProfile[] = usersRes.data.users.map(u => ({
-          id: u.id,
-          name: (u.user_metadata?.name as string) || u.email?.split('@')[0] || '—',
+      const rawUsers = usersRes.data || [];
+      
+      // 轉換使用者資料並排除 demo-admin
+      const mapped: UserProfile[] = rawUsers
+        .filter((u: any) => u.email !== 'demo-admin@motopark.example' && u.name !== 'demo-admin')
+        .map((u: any) => ({
+          id: u.id || u.uuid,
+          name: u.name || u.display_name || u.email?.split('@')[0] || '—',
           email: u.email || '—',
-          plate_number: (u.user_metadata?.plate_number as string) || '—',
+          plate_number: u.plate_number || u.plate || '—',
           parkedAt: spotByUserId[u.id] ?? null,
         }));
-        setUsers(mapped);
-      }
+
+      setUsers(mapped);
     } catch (err) {
       console.error('抓取使用者清單失敗：', err);
     }
