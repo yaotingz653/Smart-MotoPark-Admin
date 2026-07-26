@@ -29,13 +29,49 @@ export default function CommunityManager() {
 
   // 取得最新 100 筆對話記錄
   const fetchMessages = useCallback(async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('community_messages')
       .select('*')
       .order('created_at', { ascending: true })
       .limit(100);
-    if (data) {
+
+    if (error) {
+      console.error('抓取社群對話失敗：', error);
+    }
+    
+    if (data && data.length > 0) {
       setMessages(data as CommunityMessage[]);
+    } else {
+      // 若 Supabase 中尚無訊息，提供引導示範範例
+      setMessages([
+        {
+          id: 'demo-msg-1',
+          user_id: 'user-01',
+          user_name: '陳冠甫',
+          user_avatar: '',
+          role: 'student',
+          content: '請問主停車場 A-05 車位旁邊是有車輛亂停嗎？系統顯示佔用中。',
+          created_at: new Date(Date.now() - 3600000).toISOString(),
+        },
+        {
+          id: 'demo-msg-2',
+          user_id: 'ai-assistant',
+          user_name: 'AI 智慧助理',
+          user_avatar: '',
+          role: 'ai',
+          content: '系統已自動完成 AI 辨識：偵測到車位 A-05 有異常亂停通報，已通報管理員前往排查。',
+          created_at: new Date(Date.now() - 3000000).toISOString(),
+        },
+        {
+          id: 'demo-msg-3',
+          user_id: 'user-02',
+          user_name: '林聖目',
+          user_avatar: '',
+          role: 'student',
+          content: '今天雨大，地下汽車停車場 C-02 附近標線有點模糊，麻煩管理員查看一下～',
+          created_at: new Date(Date.now() - 1200000).toISOString(),
+        }
+      ]);
     }
     setLoading(false);
   }, []);

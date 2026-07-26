@@ -297,6 +297,7 @@ export default function App() {
           <Route path="/users" element={<UserManager />} />
           <Route path="/community" element={<CommunityManager />} />
           <Route path="/grid" element={<GridConfig key={context.activeArrayId} context={context} />} />
+          <Route path="/system-info" element={<SystemInfo />} />
         </Route>
         <Route path="/login" element={<Login />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />

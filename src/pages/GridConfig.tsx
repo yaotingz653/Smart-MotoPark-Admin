@@ -62,9 +62,15 @@ export default function GridConfig({ context }: GridConfigProps) {
       .select('id, status, number')
       .like('id', prefix);
 
-    if (data && data.length > 0) {
+    // 「汽車停車場」是固定的 CAR-0-0 ～ CAR-7-7 主網格。
+    // 排除資料庫內仍保留的舊測試資料（例如 CAR-F-03），不刪資料，只不讓它混入主網格。
+    const gridData = activeArray.id === 'CAR'
+      ? (data || []).filter(spot => /^CAR-[0-7]-[0-7]$/.test(spot.id))
+      : (data || []);
+
+    if (gridData.length > 0) {
       let maxRow = 0, maxCol = 0;
-      const spotsData = data as DbSpot[];
+      const spotsData = gridData as DbSpot[];
       spotsData.forEach(spot => {
         const parts = spot.id.split('-');
         const rIndex = parts.length - 2;

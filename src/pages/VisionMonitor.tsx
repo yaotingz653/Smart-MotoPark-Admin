@@ -16,7 +16,7 @@ export default function VisionMonitor() {
   const [status, setStatus] = useState<MonitorStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [frameVersion, setFrameVersion] = useState(Date.now());
+  const [frameVersion, setFrameVersion] = useState(() => Date.now());
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -35,9 +35,15 @@ export default function VisionMonitor() {
   }, []);
 
   useEffect(() => {
-    refresh();
-    const timer = window.setInterval(refresh, 8000);
-    return () => window.clearInterval(timer);
+    let timer: number;
+    const init = async () => {
+      await refresh();
+      timer = window.setInterval(refresh, 8000);
+    };
+    void init();
+    return () => {
+      if (timer) window.clearInterval(timer);
+    };
   }, [refresh]);
 
   const updatedTime = status ? new Date(status.updated_at * 1000).toLocaleTimeString('zh-TW') : '--';
