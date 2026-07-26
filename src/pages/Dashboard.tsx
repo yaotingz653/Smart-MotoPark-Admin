@@ -344,12 +344,13 @@ export default function Dashboard() {
       const [motoSpotsRes, carSpotsRes, usersRes, msgsRes] = await Promise.all([
         supabase.from('parking_spots').select('status'),
         supabase.from('car_parking_spots').select('status'),
-        supabase.auth.admin.listUsers().catch(() => ({ data: { users: [] } })),
+        supabase.from('users').select('*'),
         supabase.from('community_messages').select('id'),
       ]);
 
       if (motoSpotsRes.error) console.error('抓取機車統計資料失敗：', motoSpotsRes.error);
       if (carSpotsRes.error) console.error('抓取汽車統計資料失敗：', carSpotsRes.error);
+      if (usersRes.error) console.error('抓取使用者統計資料失敗：', usersRes.error);
 
       const motoSpots = motoSpotsRes.data || [];
       const carSpots = carSpotsRes.data || [];
@@ -364,6 +365,9 @@ export default function Dashboard() {
       const carOccupied = carSpots.filter(s => s.status === 'occupied' || s.status === 'mine').length;
       const carDisabled = carSpots.filter(s => s.status === 'disabled').length;
       const carAvailable = Math.max(0, carTotal - carOccupied - carDisabled);
+
+      const rawUsers = usersRes.data || [];
+      const userCount = rawUsers.filter((u: any) => u.email !== 'demo-admin@motopark.example' && u.name !== 'demo-admin').length;
 
       setStats({
         motoTotal: 575,
@@ -380,7 +384,7 @@ export default function Dashboard() {
         availableSpots: motoAvailable + carAvailable,
         occupiedSpots: motoOccupied + carOccupied,
         disabledSpots: motoDisabled + carDisabled,
-        totalUsers: usersRes.data?.users?.length ?? 0,
+        totalUsers: userCount,
         totalMessages: msgsRes.data?.length ?? 0,
       });
     } catch (err) {
