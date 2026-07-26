@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, type ReactNode } from 'react';
 import { Plus, Minus, Save, MousePointerClick, RefreshCcw, AlertTriangle, X, ShieldAlert, Clock, User, Ban, Car } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { GridContext, SpotData, DbSpot } from '../types/grid';
@@ -12,6 +12,7 @@ export default function GridConfig({ context }: GridConfigProps) {
   const { arrays, activeArrayId, updateArray, t } = context;
   const activeArray = arrays.find(a => a.id === activeArrayId) ?? arrays[0];
   const isLive = activeArray.isLive === true;
+  const isCarGrid = context.vehicleType === 'car';
 
   const [newRows, setNewRows] = useState(activeArray.rows);
   const [newCols, setNewCols] = useState(activeArray.cols);
@@ -485,7 +486,7 @@ export default function GridConfig({ context }: GridConfigProps) {
               let cellClass: string;
               let title: string;
               let clickable = false;
-              let cellContent: string;
+              let cellContent: ReactNode;
               let textColorClass = 'text-white/25 hover:text-white';
 
               if (cellType === 'keep') {
@@ -494,7 +495,12 @@ export default function GridConfig({ context }: GridConfigProps) {
                 else if (spot?.status === 'occupied') { cellClass = 'bg-[#EF4444] hover:bg-red-600 cursor-pointer hover:scale-110 hover:shadow-[0_0_12px_rgba(239,68,68,0.7)]'; title = `${spot.number} — 佔用中`; }
                 else if (spot?.status === 'disabled') { cellClass = 'bg-slate-400 hover:bg-slate-500 cursor-pointer hover:scale-110 hover:shadow-[0_0_12px_rgba(148,163,184,0.7)]'; title = `${spot.number} — 停用中`; }
                 else { cellClass = 'bg-[#10B981] hover:bg-emerald-600 cursor-pointer hover:scale-110 hover:shadow-[0_0_12px_rgba(16,185,129,0.7)]'; title = `${spot?.number ?? spotId} — 空位`; }
-                cellContent = spot ? spot.number.replace('-', '') : '';
+                if (isCarGrid && spot) {
+                  const icon = spot.status === 'available' ? '🅿' : spot.status === 'disabled' ? '⛔' : '🚗';
+                  cellContent = <><span className="text-sm leading-none">{icon}</span><span className="text-[8px] leading-none opacity-90">{spot.number}</span></>;
+                } else {
+                  cellContent = spot ? spot.number.replace('-', '') : '';
+                }
               } else if (cellType === 'add') {
                 cellClass = 'bg-blue-50 border-2 border-dashed border-[#3B82F6] hover:scale-105 hover:bg-blue-100/50';
                 title = '將新增此車位';
@@ -510,7 +516,7 @@ export default function GridConfig({ context }: GridConfigProps) {
               return (
                 <div key={spotId} title={title}
                   onClick={clickable ? () => handleSpotClick(spot!) : undefined}
-                  className={`h-7 rounded transition-all duration-300 shadow-sm flex items-center justify-center text-[8px] font-bold tracking-tighter select-none ${cellClass} ${textColorClass} ${clickable ? 'active:scale-90' : ''}`}
+                  className={`${isCarGrid ? 'h-12 flex-col gap-0.5' : 'h-7'} rounded transition-all duration-300 shadow-sm flex items-center justify-center text-[8px] font-bold tracking-tighter select-none ${cellClass} ${textColorClass} ${clickable ? 'active:scale-90' : ''}`}
                 >
                   {cellContent}
                 </div>

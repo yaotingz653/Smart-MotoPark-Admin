@@ -7,6 +7,7 @@ import UserManager from './pages/UserManager';
 import GridConfig from './pages/GridConfig';
 import CommunityManager from './pages/CommunityManager';
 import MultiCameraMonitor from './pages/MultiCameraMonitor';
+import SystemInfo from './pages/SystemInfo';
 import Login from './pages/Login';
 import Layout from './components/Layout';
 import type { ParkingArray, GridContext } from './types/grid';
@@ -290,6 +291,7 @@ export default function App() {
         <Route element={<Layout context={context} />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/monitor" element={<MultiCameraMonitor />} />
+          <Route path="/system-info" element={<SystemInfo />} />
           <Route path="/cameras" element={<Navigate to="/monitor" replace />} />
           <Route path="/spots" element={<SpotManager />} />
           <Route path="/users" element={<UserManager />} />

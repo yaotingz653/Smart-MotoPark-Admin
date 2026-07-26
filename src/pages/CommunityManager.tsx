@@ -121,8 +121,8 @@ export default function CommunityManager() {
     <div className="max-w-5xl mx-auto flex flex-col h-[calc(100vh-100px)]">
       {/* 頁首 */}
       <div className="mb-6 flex-shrink-0">
-        <span className="text-[10px] font-bold text-[#FF5D2B] tracking-widest uppercase mb-2 block">Moderation Panel</span>
-        <h1 className="text-4xl font-serif font-black text-editorial-ink tracking-tight">Community Chat.</h1>
+        <span className="text-[10px] font-bold text-[#FF5D2B] tracking-widest uppercase mb-2 block">Student reports & community</span>
+        <h1 className="text-4xl font-serif font-black text-editorial-ink tracking-tight">學生回報／社群</h1>
       </div>
 
       {/* 數據看板 */}

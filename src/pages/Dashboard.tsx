@@ -208,13 +208,13 @@ function TrendChart({ currentRate, t }: { currentRate: number; t: (key: string) 
 }
 
 // ─── 新手管理員引導任務面板組件 ─────────────────────────────────────────
-function OnboardingPanel({ anomalyCount, messageCount, t }: { anomalyCount: number; messageCount: number; t: (key: string, replacements?: any) => string }) {
+function OnboardingPanel({ anomalyCount, messageCount, vehicleType, t }: { anomalyCount: number; messageCount: number; vehicleType: 'moto' | 'car'; t: (key: string, replacements?: any) => string }) {
   const navigate = useNavigate();
 
   const tasks = [
     { id: 1, text: t('onboard.task1'), isCompleted: true, detail: t('onboard.task1_sub') },
     { id: 2, text: t('onboard.task2'), isCompleted: anomalyCount === 0, detail: t('onboard.task2_sub', { count: anomalyCount }), actionText: t('onboard.task2_action'), link: '/spots?guide=troubleshoot' },
-    { id: 3, text: t('onboard.task3'), isCompleted: messageCount === 0, detail: t('onboard.task3_sub', { count: messageCount }), actionText: t('onboard.task3_action'), link: '/community' },
+    ...(vehicleType === 'moto' ? [{ id: 3, text: t('onboard.task3'), isCompleted: messageCount === 0, detail: t('onboard.task3_sub', { count: messageCount }), actionText: t('onboard.task3_action'), link: '/community' }] : []),
     { id: 4, text: t('onboard.task4'), isCompleted: false, detail: t('onboard.task4_sub'), actionText: t('onboard.task4_action'), link: '/grid' }
   ];
 
@@ -566,7 +566,7 @@ export default function Dashboard() {
         <div className="space-y-6">
           {/* 新手任務引導 (Step 2 導覽高亮焦點) */}
           <div className={`transition-all duration-300 ${tourStep === 1 ? 'relative z-50 bg-white/95 rounded-[32px] p-2 ring-[4px] ring-[#FF5D2B] shadow-[0_0_40px_rgba(255,93,43,0.45)]' : ''}`}>
-            <OnboardingPanel anomalyCount={anomalyCount} messageCount={stats.totalMessages} t={t} />
+            <OnboardingPanel anomalyCount={anomalyCount} messageCount={stats.totalMessages} vehicleType={vehicleType} t={t} />
           </div>
 
           {/* 快速通道入口 */}
@@ -584,7 +584,7 @@ export default function Dashboard() {
                 <div className="flex items-center gap-2">
                   <AlertTriangle size={18} className={anomalyCount > 0 ? 'text-amber-500' : 'text-emerald-500'} />
                   <div className="flex items-center">
-                    <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">{t('nav.spots')}</span>
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">車位管理</span>
                     <Tooltip content="點擊可立刻查看詳細列表，排查是否有亂停、故障等需要強制釋放的車位。">
                       <HelpCircle size={11} />
                     </Tooltip>
@@ -617,7 +617,7 @@ export default function Dashboard() {
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <UserCheck size={18} className="text-[#3B82F6]" />
-                  <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">{t('nav.directory')}</span>
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">使用者管理</span>
                 </div>
                 <ArrowRight size={16} className="text-slate-400 group-hover:translate-x-1.5 transition-transform duration-300" />
               </div>

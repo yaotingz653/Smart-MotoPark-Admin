@@ -177,8 +177,8 @@ export default function SpotManager() {
       {/* 頁首 */}
       <div className="mb-8 flex justify-between items-end">
         <div>
-          <span className="text-[10px] font-bold text-brand-orange tracking-widest uppercase mb-2 block">Administrative Action</span>
-          <h1 className="text-4xl font-serif font-black text-editorial-ink tracking-tight">Spot Control.</h1>
+          <span className="text-[10px] font-bold text-brand-orange tracking-widest uppercase mb-2 block">Parking management</span>
+          <h1 className="text-4xl font-serif font-black text-editorial-ink tracking-tight">車位管理</h1>
         </div>
         <div className="relative w-64">
           <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">

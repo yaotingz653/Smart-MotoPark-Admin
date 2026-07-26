@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Car, Users, ShieldCheck, Grid3X3, Plus, MessageSquare, Trash2, Camera, LogOut } from 'lucide-react';
+import { LayoutDashboard, Car, Users, ShieldCheck, Grid3X3, Plus, MessageSquare, Trash2, Camera, LogOut, Info } from 'lucide-react';
 import type { GridContext } from '../types/grid';
 import AddArrayModal from './AddArrayModal';
 import { supabase } from '../lib/supabase';
@@ -75,7 +75,7 @@ export default function Layout({ context }: LayoutProps) {
             }
           >
             <Car size={20} />
-            <span>{t('nav.spots')}</span>
+            <span>{lang === 'zh' ? '車位管理' : 'Spot management'}</span>
           </NavLink>
 
           <NavLink
@@ -87,20 +87,22 @@ export default function Layout({ context }: LayoutProps) {
             }
           >
             <Users size={20} />
-            <span>{t('nav.directory')}</span>
+            <span>{lang === 'zh' ? '使用者管理' : 'User management'}</span>
           </NavLink>
 
-          <NavLink
-            to="/community"
-            className={({ isActive }) =>
-              `flex items-center gap-4 px-4 py-3 rounded-2xl font-bold transition-all duration-300 active:scale-95 ${
-                isActive ? 'bg-[#FF5D2B] text-white shadow-lg shadow-orange-600/20' : 'text-slate-400 hover:bg-slate-100/50 hover:text-[#FF5D2B]'
-              }`
-            }
-          >
-            <MessageSquare size={20} />
-            <span>{t('nav.community')}</span>
-          </NavLink>
+          {vehicleType === 'moto' && (
+            <NavLink
+              to="/community"
+              className={({ isActive }) =>
+                `flex items-center gap-4 px-4 py-3 rounded-2xl font-bold transition-all duration-300 active:scale-95 ${
+                  isActive ? 'bg-[#FF5D2B] text-white shadow-lg shadow-orange-600/20' : 'text-slate-400 hover:bg-slate-100/50 hover:text-[#FF5D2B]'
+                }`
+              }
+            >
+              <MessageSquare size={20} />
+              <span>{lang === 'zh' ? '學生回報／社群' : 'Student reports / community'}</span>
+            </NavLink>
+          )}
 
           <NavLink
             to="/grid"
@@ -111,13 +113,25 @@ export default function Layout({ context }: LayoutProps) {
             }
           >
             <Grid3X3 size={20} />
-            <span>{t('nav.grid')}</span>
+            <span>{lang === 'zh' ? (vehicleType === 'car' ? '汽車網格設定' : '機車網格設定') : (vehicleType === 'car' ? 'Car grid settings' : 'Motorcycle grid settings')}</span>
+          </NavLink>
+
+          <NavLink
+            to="/system-info"
+            className={({ isActive }) =>
+              `flex items-center gap-4 px-4 py-3 rounded-2xl font-bold transition-all duration-300 active:scale-95 ${
+                isActive ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/20' : 'text-slate-400 hover:bg-slate-100/50 hover:text-sky-600'
+              }`
+            }
+          >
+            <Info size={20} />
+            <span>{lang === 'zh' ? '系統說明' : 'System guide'}</span>
           </NavLink>
 
           {/* 停車陣列切換區塊 */}
           <div className="mt-2">
             <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest px-4 mb-2">
-              {t('grid.title')}
+              {vehicleType === 'car' ? (lang === 'zh' ? '汽車停車場設定' : 'Car parking settings') : t('grid.title')}
             </p>
 
             <div className="flex flex-col gap-1.5">

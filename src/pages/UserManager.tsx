@@ -83,8 +83,8 @@ export default function UserManager() {
       {/* 頁首 */}
       <div className="mb-8 flex justify-between items-end">
         <div>
-          <span className="text-[10px] font-bold text-[#3B82F6] tracking-widest uppercase mb-2 block">Database</span>
-          <h1 className="text-4xl font-serif font-black text-editorial-ink tracking-tight">Directory.</h1>
+          <span className="text-[10px] font-bold text-[#3B82F6] tracking-widest uppercase mb-2 block">User management</span>
+          <h1 className="text-4xl font-serif font-black text-editorial-ink tracking-tight">使用者管理</h1>
         </div>
         <div className="relative w-72">
           <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
